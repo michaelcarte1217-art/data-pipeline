@@ -1,0 +1,89 @@
+# 把示例报表发布到 GitHub Pages，作为在线演示
+#
+# 与常见的"托管一份静态 HTML"不同，这里部署的文件是**每次构建时现场跑出来的**：
+# CI 会先跑单元测试，再真实执行一遍数据管道（fixture 模式，读仓库内的样例 HTML），
+# 然后才把生成的 out/ 发布出去。因此这个站点本身就能证明代码可运行，
+# 而不是一张提前截好的图。
+#
+# 前置：仓库 Settings → Pages → Build and deployment → Source 选 "GitHub Actions"
+
+name: Deploy Report
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Install package
+        run: pip install --no-build-isolation -e .
+
+      # 质量闸门：测试不过就不部署，避免把一个跑不通的管道当成演示发出去
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Run pipeline (offline fixture source)
+        run: |
+          python -m datapipe run \
+            --config config/example.yaml \
+            --fetcher fixture \
+            --pages 2 \
+            --db data/demo.db \
+            --out out/
+
+      - name: Prepare Pages artifact
+        run: |
+          # 报表本身就是站点首页
+          cp out/report.html out/index.html
+          # 跳过 Jekyll，否则带下划线的路径会被吞掉
+          touch out/.nojekyll
+          # 让 404 也回到报表页，避免子路径直接 404
+          cp out/report.html out/404.html
+          ls -la out/
+
+      - name: Show report summary
+        run: |
+          python -c "
+          import re, pathlib
+          html = pathlib.Path('out/report.html').read_text(encoding='utf-8')
+          m = re.search(r'<title>(.*?)</title>', html)
+          print('报表标题:', m.group(1) if m else '(未找到)')
+          print('字节数  :', len(html))
+          for c in ('chart-source', 'chart-date', 'chart-category', 'chart-region'):
+              print('图表', c + ':', 'OK' if c in html else '缺失')
+          "
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+      - uses: actions/deploy-pages@v4
