@@ -40,6 +40,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          # Python 3.12+ 的 venv 不再预装 setuptools / wheel。下一步用的是
+          # --no-build-isolation（不建隔离环境），构建后端必须提前就位，
+          # 否则会报 BackendUnavailable: Cannot import 'setuptools.build_meta'。
+          pip install setuptools wheel
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Install package
@@ -81,6 +85,10 @@ jobs:
           "
 
       - uses: actions/configure-pages@v5
+        with:
+          # 首次运行时仓库还没启用 Pages，让这一步自动打开
+          # （仓库 Settings → Pages 未配置时会直接失败，需手动设一次）
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
