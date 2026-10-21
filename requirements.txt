@@ -1,0 +1,7 @@
+# 运行时依赖（版本与本项目 .venv 实测一致）
+aiohttp==3.14.5
+lxml==6.1.3
+pandas==3.0.6
+numpy==2.5.4
+PyYAML==6.0.3
+openpyxl==3.1.5

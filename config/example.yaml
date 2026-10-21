@@ -1,0 +1,75 @@
+# ---------------------------------------------------------------------------
+# DataPipe 示例配置
+#
+# 这里出现的域名全部是保留示例域名（example.gov.cn 为虚构站点），
+# 数据由 fixtures/ 下的本地 HTML 提供，因此本配置可以完全离线运行：
+#
+#   python -m datapipe run --config config/example.yaml --fetcher fixture --pages 2
+#
+# 接入自己的数据源时，只需复制一个 sources 条目并改写
+# base_url / list_url / selectors，无需改动任何 Python 代码。
+# ---------------------------------------------------------------------------
+version: 1
+
+http:
+  timeout_s: 15
+  # 自定义 UA：带上项目标识与用途说明，便于对方站点识别流量来源
+  user_agent: "DataPipeBot/0.1 (+data-pipeline sample; contact: example@example.com)"
+  retry:
+    max_retries: 3
+    base_delay: 1.0
+    factor: 2.0
+    jitter_ratio: 0.1
+  concurrency:
+    # 全局并发上限
+    global_limit: 8
+    # 单域名并发上限：对同一个站点保持克制
+    per_host_limit: 2
+    # 收到 429 后的冷却时长（秒），期间并发额度减半
+    cooldown_s: 30
+
+output:
+  db_path: data/pipeline.db
+  out_dir: out
+  report_title: 政务公告采集报表
+
+sources:
+  - name: gov_notice_demo
+    # 适配器名称，对应 src/datapipe/sources/ 下注册的实现
+    adapter: gov_notice
+    enabled: true
+    base_url: "https://notice.example.gov.cn"
+    # 列表页模板：必须包含 {page}，实际页码从 page_start 起算
+    list_url: "https://notice.example.gov.cn/notice/list_page_{page}.html"
+    page_start: 1
+    # 离线模式（--fetcher fixture）下从该目录读取 HTML，URL 末段文件名与之一一对应
+    fixture_dir: fixtures
+    notes: "示例源：结构模拟政务公开网站的通知公告列表 + 详情两段式页面"
+    # 选择器全部是 XPath，集中放在配置里，站点改版时只改这里
+    selectors:
+      list_item: ".//ul[contains(@class,'notice-list')]/li[contains(@class,'notice-item')]"
+      list_link: ".//a[contains(@class,'title')]"
+      list_date: ".//span[contains(@class,'date')]"
+      list_region: ".//span[contains(@class,'region')]"
+      list_category: ".//span[contains(@class,'category')]"
+      detail_title: ".//h1[contains(@class,'article-title')]"
+      # 详情页元信息条，日期/来源/地区/分类各占一个 span
+      detail_date: ".//div[contains(@class,'article-meta')]//span[contains(@class,'date')]"
+      detail_source: ".//div[contains(@class,'article-meta')]//span[contains(@class,'source')]"
+      detail_region: ".//div[contains(@class,'article-meta')]//span[contains(@class,'region')]"
+      detail_category: ".//div[contains(@class,'article-meta')]//span[contains(@class,'category')]"
+      detail_content: ".//div[contains(@class,'article-content')]"
+
+  # -------------------------------------------------------------------------
+  # 再接入一个源时，按下面的形状追加即可（示例，默认关闭）：
+  #
+  # - name: another_site
+  #   adapter: gov_notice          # 页面结构相同则复用同一适配器
+  #   enabled: false
+  #   base_url: "https://another.example.org"
+  #   list_url: "https://another.example.org/notice/index_{page}.html"
+  #   page_start: 1
+  #   selectors:
+  #     list_item: ".//div[@id='list']//li"
+  #     detail_title: ".//h2[@class='title']"
+  # -------------------------------------------------------------------------

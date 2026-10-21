@@ -1,0 +1,2 @@
+# 开发依赖（在 requirements.txt 基础上追加）
+pytest==9.1.1

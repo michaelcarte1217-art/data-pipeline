@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datapipe"
+version = "0.1.0"
+description = "公开信息采集与报表工具：异步抓取 → 清洗入库 → 可视化报表"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "李宏洋", email = "326290935@qq.com" }]
+keywords = ["crawler", "data-pipeline", "asyncio", "pandas", "report"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "aiohttp>=3.9,<4",
+  "lxml>=5.0",
+  "pandas>=2.0",
+  "PyYAML>=6.0",
+  "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+datapipe = "datapipe.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+  "error::DeprecationWarning:datapipe.*",
+]
